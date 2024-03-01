@@ -74,25 +74,25 @@ class UserControllerTest {
                 .build();
         // when
         ResultActions perform_200 = mvc.perform(
-                post(BASE_URI + "/")
+                post(BASE_URI + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request_200))
         );
 
         ResultActions perform_400_missing_required = mvc.perform(
-                post(BASE_URI + "/")
+                post(BASE_URI + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request_400_missing_required))
         );
 
         ResultActions perform_400_username_pattern_capital = mvc.perform(
-                post(BASE_URI + "/")
+                post(BASE_URI + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request_400_username_pattern_capital))
         );
 
         ResultActions perform_400_username_pattern_short = mvc.perform(
-                post(BASE_URI + "/")
+                post(BASE_URI + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request_400_username_pattern_short))
         );

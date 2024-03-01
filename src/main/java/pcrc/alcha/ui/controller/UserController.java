@@ -31,7 +31,7 @@ public class UserController {
     private final UserOperationUseCase operationUseCase;
     private final UserReadUseCase readUseCase;
 
-    @PostMapping("/")
+    @PostMapping("/register")
     ResponseEntity<ApiResponseView<UserView>> signUp(@RequestBody @Validated UserCreateRequest request) {
 
         UserCreateCommand command = UserCreateCommand.builder()
