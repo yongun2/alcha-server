@@ -2,12 +2,17 @@ package pcrc.alcha.application.service.user;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pcrc.alcha.application.domain.auth.RefreshToken;
 import pcrc.alcha.application.domain.auth.User;
+import pcrc.alcha.application.domain.jwt.Token;
 import pcrc.alcha.application.service.image.ImageService;
+import pcrc.alcha.application.utils.JWTTokenUtils;
 import pcrc.alcha.exception.AlchaException;
 import pcrc.alcha.exception.MessageType;
+import pcrc.alcha.infrastructure.persistance.entity.RefreshTokenEntity;
 import pcrc.alcha.infrastructure.persistance.entity.UserEntity;
 import pcrc.alcha.infrastructure.persistance.repository.auth.UserRepository;
 
@@ -20,6 +25,9 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
 
     private final ImageService imageService;
     private final UserRepository repository;
+
+    private final PasswordEncoder passwordEncoder;
+    private final JWTTokenUtils jwtTokenUtils;
 
 
     private final String VALID_USERNAME_PATTERN = "^[a-z0-9_-]{2,16}$";
@@ -37,7 +45,7 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
 
         User user = User.builder()
                 .username(command.username())
-                .password(command.password())
+                .password(passwordEncoder.encode(command.password()))
                 .nickname(command.nickname())
                 .profileImgUrl(imageSaveUrl)
                 .build();
@@ -45,6 +53,46 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
         return FindUserResult.findByUser(
                 repository.save(new UserEntity(user)).toUser()
         );
+    }
+
+    @Override
+    @Transactional
+    public FindLoginResult login(UserLoginCommand command) {
+
+        UserEntity userEntity = repository.findUserEntityByUsername(command.username())
+                .orElseThrow(() -> new AlchaException(MessageType.USER_NOT_FOUND));
+
+        if (!passwordEncoder.matches(command.password(), userEntity.getPassword())) {
+            throw new AlchaException(MessageType.USER_NOT_FOUND);
+        }
+
+        Token token = jwtTokenUtils.generateToken(userEntity.getNickname());
+
+        log.info(userEntity.toUser().toString());
+        UserEntity result = repository.save(new UserEntity(
+                userEntity.toUser(),
+                new RefreshTokenEntity(
+                        RefreshToken.builder()
+                                .token(token.refreshToken())
+                                .build()
+                )
+        ));
+
+        return FindLoginResult.findByLoginResult(
+                token.accessToken(),
+                result.getRefreshTokenEntity().getId()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void logout(UserFindQuery query) {
+        repository.save(new UserEntity(
+                repository.findUserEntityByNickname(query.nickname())
+                        .orElseThrow(() -> new AlchaException(MessageType.USER_NOT_FOUND))
+                        .toUser(),
+                null
+        ));
     }
 
     @Override
@@ -97,6 +145,7 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
             throw new AlchaException(MessageType.BAD_NICKNAME_PATTERN);
         }
     }
+
     private boolean isValidUsername(String username) {
         return Pattern.compile(VALID_USERNAME_PATTERN)
                 .matcher(username)
