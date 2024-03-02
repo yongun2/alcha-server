@@ -29,24 +29,27 @@ public class UserEntity {
     private RefreshTokenEntity refreshTokenEntity;
 
     public UserEntity(User user) {
+        this.id = user.getId();
         this.username = user.getUsername();
         this.password = user.getPassword();
         this.nickname = user.getNickname();
         this.profileImgUrl = user.getProfileImgUrl();
     }
 
-    public UserEntity(User user, RefreshToken refreshToken) {
+    public UserEntity(User user, RefreshTokenEntity refreshTokenEntity) {
+        this.id = user.getId();
         this.username = user.getUsername();
         this.password = user.getPassword();
         this.nickname = user.getNickname();
         this.profileImgUrl = user.getProfileImgUrl();
-        this.refreshTokenEntity = new RefreshTokenEntity(refreshToken);
+        this.refreshTokenEntity = refreshTokenEntity;
     }
 
     public User toUser() {
         return User.builder()
                 .id(this.id)
                 .username(this.username)
+                .password(this.password)
                 .nickname(this.nickname)
                 .profileImgUrl(this.profileImgUrl)
                 .build();
