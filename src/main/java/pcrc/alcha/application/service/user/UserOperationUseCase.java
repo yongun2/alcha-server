@@ -1,10 +1,15 @@
 package pcrc.alcha.application.service.user;
 
 import lombok.Builder;
+import pcrc.alcha.application.service.user.UserReadUseCase.FindUserResult;
+
+import static pcrc.alcha.application.service.user.UserReadUseCase.*;
 
 public interface UserOperationUseCase {
 
-    UserReadUseCase.FindUserResult register(UserCreateCommand command);
+    FindUserResult register(UserCreateCommand command);
+    FindLoginResult login(UserLoginCommand command);
+    void logout(UserFindQuery query);
 
     @Builder
     record UserCreateCommand(
@@ -14,5 +19,12 @@ public interface UserOperationUseCase {
             String profileImgBase64
     ) {
 
+    }
+
+    @Builder
+    record UserLoginCommand(
+            String username,
+            String password
+    ) {
     }
 }

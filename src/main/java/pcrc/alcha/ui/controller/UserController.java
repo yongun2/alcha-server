@@ -1,26 +1,27 @@
 package pcrc.alcha.ui.controller;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import pcrc.alcha.application.service.user.UserOperationUseCase;
 import pcrc.alcha.application.service.user.UserReadUseCase;
 import pcrc.alcha.application.service.user.UserReadUseCase.UserFindQuery;
-import pcrc.alcha.application.service.user.UserService;
 import pcrc.alcha.exception.AlchaException;
 import pcrc.alcha.exception.MessageType;
 import pcrc.alcha.ui.requestBody.UserCreateRequest;
+import pcrc.alcha.ui.requestBody.UserLoginRequest;
 import pcrc.alcha.ui.view.ApiResponseView;
+import pcrc.alcha.ui.view.user.LoginView;
 import pcrc.alcha.ui.view.user.UserView;
 
-import java.util.Objects;
-
-import static pcrc.alcha.application.service.user.UserOperationUseCase.*;
-import static pcrc.alcha.application.service.user.UserReadUseCase.*;
+import static pcrc.alcha.application.service.user.UserOperationUseCase.UserCreateCommand;
+import static pcrc.alcha.application.service.user.UserOperationUseCase.UserLoginCommand;
+import static pcrc.alcha.application.service.user.UserReadUseCase.FindLoginResult;
+import static pcrc.alcha.application.service.user.UserReadUseCase.FindUserResult;
 
 @Slf4j
 @RestController
@@ -33,7 +34,6 @@ public class UserController {
 
     @PostMapping("/register")
     ResponseEntity<ApiResponseView<UserView>> signUp(@RequestBody @Validated UserCreateRequest request) {
-
         UserCreateCommand command = UserCreateCommand.builder()
                 .username(request.username())
                 .password(request.password())
@@ -47,8 +47,16 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    void login() {
-
+    ResponseEntity<ApiResponseView<LoginView>> login(@RequestBody @Validated UserLoginRequest request) {
+        FindLoginResult result = operationUseCase.login(
+                UserLoginCommand.builder()
+                        .username(request.username())
+                        .password(request.password())
+                        .build()
+        );
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(new ApiResponseView<>(new LoginView(result)));
     }
 
     @GetMapping("/check-duplicate")
@@ -70,12 +78,20 @@ public class UserController {
     }
 
     @DeleteMapping("/logout")
-    void logout() {
-
+    ResponseEntity<Object> logout(@AuthenticationPrincipal String nickname) {
+        operationUseCase.logout(
+                UserFindQuery.builder()
+                        .nickname(nickname)
+                        .build(
+                        )
+        );
+        return ResponseEntity.status(HttpStatus.OK)
+                .build();
     }
 
     @GetMapping("/health-check")
-    String healthTest() {
+    String healthTest(@AuthenticationPrincipal String nickname) {
+        log.info("authenticated = {}", nickname);
         return "ok";
     }
 }

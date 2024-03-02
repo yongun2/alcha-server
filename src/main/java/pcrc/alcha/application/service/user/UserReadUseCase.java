@@ -37,4 +37,14 @@ public interface UserReadUseCase {
                     .build();
         }
     }
+
+    @Builder
+    record FindLoginResult(String accessToken, long refreshTokenId) {
+        public static FindLoginResult findByLoginResult(String accessToken, long refreshTokenId) {
+            return FindLoginResult.builder()
+                    .accessToken(accessToken)
+                    .refreshTokenId(refreshTokenId)
+                    .build();
+        }
+    }
 }
