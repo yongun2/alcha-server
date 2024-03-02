@@ -16,8 +16,7 @@ import pcrc.alcha.infrastructure.persistance.repository.auth.UserRepository;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static pcrc.alcha.application.service.user.UserOperationUseCase.*;
 import static pcrc.alcha.application.service.user.UserReadUseCase.*;
 import static pcrc.alcha.application.service.user.UserReadUseCase.UserFindQuery.*;
@@ -153,6 +152,87 @@ class UserServiceTest {
                 .hasMessage(MessageType.BAD_NICKNAME_PATTERN.getMessage());
 
     }
+
+    @Test
+    @Transactional
+    @DisplayName("로그인 테스트")
+    void login() {
+        // given
+        UserCreateCommand default_command = UserCreateCommand.builder()
+                .username("asd1234")
+                .password("qwer1234!")
+                .nickname("testUserA")
+                .profileImgBase64(null)
+                .build();
+
+        UserLoginCommand command_200 = UserLoginCommand.builder()
+                .username(default_command.username())
+                .password(default_command.password())
+                .build();
+
+        UserLoginCommand command_404_username = UserLoginCommand.builder()
+                .username("")
+                .password(default_command.password())
+                .build();
+        UserLoginCommand command_404_password = UserLoginCommand.builder()
+                .username(default_command.username())
+                .password("")
+                .build();
+        service.register(default_command);
+        FindLoginResult result_200 = service.login(command_200);
+        // when
+
+        Optional<UserEntity> userEntityByUsernameOptional = repository.findUserEntityByUsername(default_command.username());
+        // then
+        assertThat(userEntityByUsernameOptional.isPresent()).isTrue();
+        assertThat(userEntityByUsernameOptional.get().getRefreshTokenEntity().getId()).isEqualTo(result_200.refreshTokenId());
+
+        assertThatThrownBy(() -> service.login(command_404_username))
+                .isInstanceOf(AlchaException.class)
+                .hasMessage(MessageType.USER_NOT_FOUND.getMessage());
+        assertThatThrownBy(() -> service.login(command_404_password))
+                .isInstanceOf(AlchaException.class)
+                .hasMessage(MessageType.USER_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("로그아웃 테스트")
+    void logout() {
+        // given
+        UserCreateCommand default_command = UserCreateCommand.builder()
+                .username("asd1234")
+                .password("qwer1234!")
+                .nickname("testUserA")
+                .profileImgBase64(null)
+                .build();
+
+        UserLoginCommand command_200 = UserLoginCommand.builder()
+                .username(default_command.username())
+                .password(default_command.password())
+                .build();
+        service.register(default_command);
+        service.login(command_200);
+
+        UserFindQuery query_200 = builder()
+                .nickname(default_command.nickname())
+                .build();
+        UserFindQuery query_404 = builder()
+                .nickname("")
+                .build();
+        // when
+        service.logout(query_200);
+
+        // then
+        Optional<UserEntity> userEntityByNicknameOptional = repository.findUserEntityByNickname(default_command.nickname());
+        assertThat(userEntityByNicknameOptional.isPresent()).isTrue();
+        assertThat(userEntityByNicknameOptional.get().getRefreshTokenEntity()).isNull();
+
+        assertThatThrownBy(() -> service.logout(query_404))
+                .isInstanceOf(AlchaException.class)
+                .hasMessage(MessageType.USER_NOT_FOUND.getMessage());
+    }
+
 
     @Test
     @Transactional

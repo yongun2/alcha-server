@@ -1,6 +1,5 @@
 package pcrc.alcha.ui.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
@@ -15,21 +14,27 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
+import pcrc.alcha.application.domain.jwt.Token;
+import pcrc.alcha.application.service.user.UserOperationUseCase;
+import pcrc.alcha.application.service.user.UserOperationUseCase.UserCreateCommand;
+import pcrc.alcha.application.utils.JWTTokenUtils;
 import pcrc.alcha.exception.MessageType;
+import pcrc.alcha.infrastructure.persistance.entity.UserEntity;
+import pcrc.alcha.infrastructure.persistance.repository.auth.UserRepository;
 
-import java.util.LinkedHashMap;
+import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static pcrc.alcha.application.service.user.UserOperationUseCase.UserLoginCommand;
 
 @Slf4j
 @SpringBootTest
 @AutoConfigureMockMvc
+@Transactional
 class UserControllerTest {
 
     @Autowired
@@ -38,12 +43,22 @@ class UserControllerTest {
     @Autowired
     private ObjectMapper mapper;
 
+    @Autowired
+    private UserOperationUseCase operationUseCase;
+
+    @Autowired
+    private UserRepository repository;
+
+    @Autowired
+    private JWTTokenUtils jwtTokenUtils;
+
     @Value("${local.img.default}")
     private String DEFAULT_IMG_URL;
     private final String BASE_URI = "/api/v1/users";
 
     @Test
     @Transactional
+    @DisplayName("회원가입 테스트")
     void signUp() throws Exception {
         // given
         UserCreateRequest request_200 = UserCreateRequest.builder()
@@ -115,7 +130,79 @@ class UserControllerTest {
     }
 
     @Test
-    void login() {
+    @Transactional
+    @DisplayName("로그아웃 테스트")
+    void logout() throws Exception {
+        // given
+        UserCreateCommand command = UserCreateCommand.builder()
+                .username("asd1234")
+                .password("qwer1234!")
+                .nickname("testUserA")
+                .profileImgBase64(null)
+                .build();
+
+        UserLoginCommand loginCommand = UserLoginCommand.builder()
+                .username(command.username())
+                .password(command.password())
+                .build();
+        operationUseCase.register(command);
+        operationUseCase.login(loginCommand);
+
+        Token token = jwtTokenUtils.generateToken(command.nickname());
+        // when
+        ResultActions perform_200 = mvc.perform(delete(BASE_URI + "/logout")
+                .header("Authorization", token.accessToken())
+        );
+        ResultActions perform_403 = mvc.perform(delete(BASE_URI + "/logout"));
+        // then
+        perform_200.andExpect(status().isOk());
+        perform_403.andExpect(status().isForbidden());
+
+        Optional<UserEntity> optional = repository.findUserEntityByUsername(command.username());
+        assertThat(optional.isPresent()).isTrue();
+        assertThat(optional.get().getRefreshTokenEntity()).isNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("로그인 테스트")
+    void login() throws Exception {
+        // given
+        UserCreateCommand command = UserCreateCommand.builder()
+                .username("asd1234")
+                .password("qwer1234!")
+                .nickname("testUserA")
+                .profileImgBase64(null)
+                .build();
+        operationUseCase.register(command);
+
+        UserLoginRequest request_200 = UserLoginRequest.builder()
+                .username("asd1234")
+                .password("qwer1234!")
+                .build();
+        UserLoginRequest request_404 = UserLoginRequest.builder()
+                .username("asd1234")
+                .password("d")
+                .build();
+        // when
+        ResultActions perform_200 = mvc.perform(
+                post(BASE_URI + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request_200))
+        );
+        ResultActions perform_404 = mvc.perform(
+                post(BASE_URI + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(request_404))
+        );
+        // then
+        Optional<UserEntity> userEntityByNickname = repository.findUserEntityByNickname(command.nickname());
+        assertThat(userEntityByNickname.isPresent()).isTrue();
+        perform_200.andExpect(status().isOk());
+        perform_200.andExpect(jsonPath("$.data.refreshTokenId", is(userEntityByNickname.get().getRefreshTokenEntity().getId())));
+
+        perform_404.andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errors[0].errorMessage", is(MessageType.USER_NOT_FOUND.getMessage())));
     }
 
     @Test
@@ -131,7 +218,7 @@ class UserControllerTest {
                 .build();
 
         ResultActions perform_200 = mvc.perform(
-                post(BASE_URI + "/")
+                post(BASE_URI + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(request_200))
         );
@@ -166,22 +253,25 @@ class UserControllerTest {
     }
 
     @Test
-    void logout() {
-    }
-
-    @Test
     void healthTest() throws Exception {
         // given
-
+        Token token = jwtTokenUtils.generateToken("testUserA");
         // when
 
         // then
-        mvc.perform(get(BASE_URI + "/health-check"))
+        mvc.perform(get(BASE_URI + "/health-check")
+                        .header("Authorization", token.accessToken())
+                )
                 .andExpect(status().isOk());
     }
 
     @Builder
     private record UserCreateRequest(String username, String password, String nickname, String profileImageBase64) {
+
+    }
+
+    @Builder
+    private record UserLoginRequest(String username, String password) {
 
     }
 }

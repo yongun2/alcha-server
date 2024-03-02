@@ -11,6 +11,7 @@ import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.transaction.annotation.Transactional;
 import pcrc.alcha.application.domain.auth.RefreshToken;
 import pcrc.alcha.application.domain.auth.User;
+import pcrc.alcha.infrastructure.persistance.entity.RefreshTokenEntity;
 import pcrc.alcha.infrastructure.persistance.entity.UserEntity;
 
 import java.util.Optional;
@@ -129,7 +130,7 @@ class UserRepositoryTest {
                 .token("testTokenA")
                 .build();
         // when
-        UserEntity result = repository.save(new UserEntity(success_testUserA, success_refreshToken));
+        UserEntity result = repository.save(new UserEntity(success_testUserA, new RefreshTokenEntity(success_refreshToken)));
         // then
         assertThat(result.getUsername()).isEqualTo(success_testUserA.getUsername());
         assertThat(result.getRefreshTokenEntity().getToken()).isEqualTo(success_refreshToken.getToken());
