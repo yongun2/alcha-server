@@ -13,6 +13,11 @@ public enum MessageType {
 
     INVALID_IMAGE("Invalid image.", HttpStatus.BAD_REQUEST),
     INVALID_IMAGE_TYPE("Invalid image type, only png and jpeg are allowed", HttpStatus.BAD_REQUEST),
+
+    //401
+    INVALID_TOKEN("Received an invalid token.", HttpStatus.UNAUTHORIZED),
+    TOKEN_EXPIRED("The token has expired.", HttpStatus.UNAUTHORIZED),
+
     // 404
     USER_NOT_FOUND("No such user found.", HttpStatus.NOT_FOUND),
 
