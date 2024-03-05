@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pcrc.alcha.application.domain.auth.RefreshToken;
 import pcrc.alcha.application.domain.auth.User;
+import pcrc.alcha.application.domain.img.ImageType;
 import pcrc.alcha.application.domain.jwt.Token;
 import pcrc.alcha.application.service.image.ImageService;
 import pcrc.alcha.application.utils.JWTTokenUtils;
@@ -41,7 +42,7 @@ public class UserService implements UserOperationUseCase, UserReadUseCase {
 
         validateCommand(command);
 
-        String imageSaveUrl = imageService.save(command.profileImgBase64());
+        String imageSaveUrl = imageService.save(command.profileImgBase64(), ImageType.PROFILE);
 
         User user = User.builder()
                 .username(command.username())
