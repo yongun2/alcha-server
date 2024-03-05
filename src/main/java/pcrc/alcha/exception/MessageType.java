@@ -20,6 +20,7 @@ public enum MessageType {
 
     // 404
     USER_NOT_FOUND("No such user found.", HttpStatus.NOT_FOUND),
+    CATEGORY_NOT_FOUNT("No such category found", HttpStatus.NOT_FOUND),
 
     // 409
     DUPLICATED_USERNAME("Duplicated username", HttpStatus.CONFLICT),
