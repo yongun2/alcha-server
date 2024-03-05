@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import pcrc.alcha.application.domain.img.ImageType;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,7 +46,7 @@ class ImageServiceTest {
         ImageInfo imageInfo = Imaging.getImageInfo(bytesArray);
 
         // when
-        String path = service.save(imgBase64);
+        String path = service.save(imgBase64, ImageType.PROFILE);
 
         // then
         assertThat(path).isEqualTo(LOCAL_SAVE_DIRECTORY_PATH + "profile." + imageInfo.getFormat().getName().toLowerCase(Locale.ROOT));
